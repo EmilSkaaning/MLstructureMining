@@ -9,13 +9,14 @@ setup(
     author='Emil T. S. Kjaer',
     author_email='etsk@chem.ku.dk',
     url='',
-    discription='Finds crystallographic information files!',
+    description='Finds crystallographic information files!',
     long_description=long_description,
     long_description_content_type="text/markdown",
     py_modules=['ciff'],
+    packages=['ciff'],
 
     entry_points={'console_scripts': [
-        'ciff=ciff.main:main',
+        'ciff=ciff.cli:main',
     ],
     },
     classifiers=[
@@ -25,6 +26,7 @@ setup(
         'Operating System :: OS Independent',
     ],
     include_package_data = True,
+    zip_safe=False,
 
     install_requires = [
         'scipy',
@@ -33,11 +35,11 @@ setup(
         'tqdm',
         'matplotlib'
     ],
-    extras_require = {
-        'dev': [
-            'pytest>=3.7',
-        ],
-    },
+    #extras_require = {
+    #    'dev': [
+    #        'pytest>=3.7',
+    #    ],
+    #},
 )
 
 # requirements.txt for deployment on machines that you control.
