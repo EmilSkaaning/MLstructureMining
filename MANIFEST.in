@@ -1,0 +1,9 @@
+include README.md
+
+include ciff/model/large/*.csv
+include ciff/model/large/*.bin
+include ciff/model/large/data/*.csv
+
+include ciff/model/small/*.csv
+include ciff/model/small/*.bin
+include ciff/model/small/data/*.csv
