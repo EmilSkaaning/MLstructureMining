@@ -21,15 +21,16 @@ be compared with precomputed PDF through Pearson analysis.
 """
 
 parser = argparse.ArgumentParser(prog='ciff',
-                        description=_BANNER, formatter_class=argparse.RawTextHelpFormatter)
+                        description=_BANNER, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Load data args
 requiredNamed = parser.add_argument_group('required named arguments')
 requiredNamed.add_argument("-d", "--data", default=None, type=str,
-                    help="a director of PDFs or a file.", required=True)
+                    help="a directory of PDFs or a file.", required=True)
 
 # model args
 parser.add_argument("-m", "--model", default=0, type=int,
+                    choices=[0, 1, 2],
                     help="Choose what model to load. 0 large, 1 small and 2 both")
 
 parser.add_argument("-n", "--nthreads", default=1, type=int,
@@ -40,7 +41,7 @@ parser.add_argument("-s", "--show", default=5, type=int,
 
 # Pearson args
 parser.add_argument("-p", "--pearson", default=5, type=int,
-                    help="Calc pearson from pre-calculated PDFs")
+                    help="Calculate the Pearson correlation coefficient from pre-calculated PDFs of best suggested models.")
 
 # output args
 parser.add_argument("-o", "--output", default=True, type=bool,

@@ -8,7 +8,7 @@ setup(
     version='0.1.0',
     author='Emil T. S. Kjaer',
     author_email='etsk@chem.ku.dk',
-    url='',
+    url='https://github.com/EmilSkaaning/ciff',
     description='Finds crystallographic information files!',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -35,11 +35,6 @@ setup(
         'tqdm',
         'matplotlib'
     ],
-    #extras_require = {
-    #    'dev': [
-    #        'pytest>=3.7',
-    #    ],
-    #},
 )
 
 # requirements.txt for deployment on machines that you control.
