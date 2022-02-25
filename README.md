@@ -28,7 +28,9 @@ might be several versions. Choose the desired version and download the .zip file
 navigate to the this package in the terminal you just created a new environment in. Run the following
 command to install the __ciff__ package.  
 ```
-python setup.py install --user
+pip install .
+or
+python setup.py install
 ```
 It will take some time for it to install since some of the models are quite big and there is a lot of reference data.  
 To verify that __ciff__ have been installed properly try calling the help argument.
