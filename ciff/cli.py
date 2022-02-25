@@ -1,4 +1,4 @@
-import argparse, os, sys, time, pkg_resources
+import argparse, os, sys, time, pkg_resources, h5py
 import numpy as np
 import pandas as pd
 import xgboost as xgb
@@ -55,7 +55,7 @@ parser.add_argument("-P", "--plot", default=True, type=bool,
 
 def main(args=None):
     args = parser.parse_args(args=args)
-    droplist = ['xyz', 'a', 'b', 'c', 'alpha', 'beta', 'gamma', 'Uiso', 'Psize', 'rmin', 'rmax', 'rstep', 'qmin',
+    droplist = ['a', 'b', 'c', 'alpha', 'beta', 'gamma', 'Uiso', 'Psize', 'rmin', 'rmax', 'rstep', 'qmin',
                 'qmax', 'qdamp', 'delta2']
 
     # load data
@@ -125,19 +125,24 @@ def plot_best(r, grs, pears, labels, file_name):
 
 def pearson_correlation(r, gr, model_path, best_list, droplist, num_pears, file_name, do_plot):
     if model_path == 0:
-        data_path = 'model/large/data'
+        data_path = 'model/large/large_data.hdf5'
     else:
-        data_path = 'model/small/data'
-    data_files = sorted(pkg_resources.resource_listdir(__name__, data_path))
+        data_path = 'model/small/small_data.hdf5'
+    #data_files = sorted(pkg_resources.resource_listdir(__name__, data_path))
+    data_file = pkg_resources.resource_stream(__name__, data_path)
+    f = h5py.File(data_file, "r")
+    key_list = list(f.keys())
 
     best_pear = np.empty(len(best_list[0]))
     best_pear[:] = np.nan
     gr_plot, pear_plot, label_plot = [gr], [1], ['Data']
     pbar = tqdm(total=num_pears)
     for count, idx in enumerate(best_list[0][::-1]):
-        stream = pkg_resources.resource_stream(__name__, data_path+'/'+data_files[idx])
+        H = [x.decode() for x in f['columns']]
+        df = pd.DataFrame(f[key_list[idx]], columns=H)
+        #stream = pkg_resources.resource_stream(__name__, data_path+'/'+data_files[idx])
 
-        df = pd.read_csv(stream)
+        #df = pd.read_csv(stream)
 
         df = df.drop(droplist, axis=1)
         pcc_list = []
@@ -145,19 +150,19 @@ def pearson_correlation(r, gr, model_path, best_list, droplist, num_pears, file_
             pcc, _ = stats.pearsonr(df.iloc[row_idx].to_numpy(), gr)
             pcc_list.append(pcc)
         best_pear[count] = np.amax(pcc_list[0])
-        #df.close()
-        pbar.update()
 
         if do_plot and count < 5:
             gr_plot.append(df.iloc[np.argmax(pcc_list[0])].to_numpy())
             pear_plot.append(np.amax(pcc_list[0]))
-            label_plot.append(data_files[idx].split('.')[0])
+            label_plot.append(key_list[idx])
 
+        pbar.update()
         if count == num_pears -1:
             break
     pbar.close()
-    plot_best(r, gr_plot, pear_plot, label_plot, file_name)
+    f.close()
 
+    plot_best(r, gr_plot, pear_plot, label_plot, file_name)
     return best_pear
 
 
@@ -235,7 +240,7 @@ class data_loader():
 
         return r, gr, XGB_mat
 
-import io
+
 def load_model(model_path, nthreads):
     if model_path == 0:
         model_path = f'model/large'
