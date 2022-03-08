@@ -1,17 +1,10 @@
-import argparse, os, sys, time, pkg_resources, h5py
+import argparse, os, sys, time, pkg_resources, h5py, datetime
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from scipy import stats
-"""
-print(__name__)
-stream = pkg_resources.resource_stream(__name__, 'model/small/answers_metal_S_H_1_11_AA_split_00100_w_abc_uiso.csv')
-df = pd.read_csv(stream, index_col=0)
-print(df.head())
-print(pkg_resources.resource_listdir(__name__, 'model/small/data'))
-"""
 
 _BANNER = """
 This is a package which takes a directory of PDF files
@@ -60,39 +53,46 @@ def main(args=None):
 
     # load data
     data_obj = data_loader(args.data, args.model)
-    if data_obj.is_file:  # todo: implement for dir
-        stem_name = f'{args.file_name}_{data_obj.data_name}_{args.model}'
+
+    if data_obj.is_file:
+        new_dir = ''
+    else:
+        ct = str(datetime.datetime.now()).replace(' ', '_').replace(':', '-').replace('.', '-')
+        new_dir = f'./ciff_ress_{ct}/'
+        os.mkdir(f'{new_dir}')
+        print(f'\n{new_dir} has been created!')
 
     # do predictions
     bst, answer_list, df_stru_catalog = load_model(args.model, args.nthreads)
-    pred = bst.predict(data_obj.gr_XGB)
-    best_list = np.argsort(pred)
-    show_best(pred, best_list, answer_list, df_stru_catalog, args.show)
+    for r, gr, gr_XGB, stem_name in data_obj:
+        pred = bst.predict(gr_XGB)
+        best_list = np.argsort(pred)
+        show_best(pred, best_list, answer_list, df_stru_catalog, args.show)
 
-    # get Pearson values
-    if args.pearson != 0:
-        print('\nCalculating Pearson Correlation Coeficients')
-        if args.pearson > len(answer_list) or args.pearson == -1:
-            pearson_list = pearson_correlation(data_obj.r, data_obj.gr, args.model, best_list, droplist, len(answer_list), stem_name, args.plot)
-        else:
-            pearson_list = pearson_correlation(data_obj.r, data_obj.gr, args.model, best_list, droplist, args.pearson, stem_name, args.plot)
-
-    # outputs
-    if args.output:
-        print('\nGenerating outputs')
-        df_dict = {
-            'label': answer_list,
-            'probability': pred[0],
-            'similar': df_stru_catalog['Similar'].values
-        }
-        df = pd.DataFrame(data=df_dict)
-        df = df.sort_values('probability', ascending=False)
-        df = df.reset_index(drop=True)
+        # get Pearson values
         if args.pearson != 0:
-            df['pearson'] = pearson_list
+            print('\nCalculating Pearson Correlation Coeficients')
+            if args.pearson > len(answer_list) or args.pearson == -1:
+                pearson_list = pearson_correlation(r, gr, args.model, best_list, droplist, len(answer_list), f'{new_dir}{stem_name}', args.plot)
+            else:
+                pearson_list = pearson_correlation(r, gr, args.model, best_list, droplist, args.pearson, f'{new_dir}{stem_name}', args.plot)
 
-        df.to_csv(f'{stem_name}.csv')
-        print(df.head())
+        # outputs
+        if args.output:
+            print('\nGenerating outputs')
+            df_dict = {
+                'label': answer_list,
+                'probability': pred[0],
+                'similar': df_stru_catalog['Similar'].values
+            }
+            df = pd.DataFrame(data=df_dict)
+            df = df.sort_values('probability', ascending=False)
+            df = df.reset_index(drop=True)
+            if args.pearson != 0:
+                df['pearson'] = pearson_list
+
+            df.to_csv(f'{new_dir}{stem_name}.csv')
+            print(df.head())
 
 
 def plot_best(r, grs, pears, labels, file_name):
@@ -172,16 +172,28 @@ class data_loader():
         if os.path.isfile(data_dir):  # is it a file
             print('Input is file')
             r, gr, gr_XGB = self.load_data_set(data_dir)
-            if '/' in data_dir:
-                self.data_name = data_dir.rsplit('/',1)[1]
-            else:
-                self.data_name = data_dir
-            self.data_name = self.data_name.rsplit('.', 1)[0]
+            data_name_ph = self.get_str(data_dir)
+            r = [r]
+            gr = [gr]
+            gr_XGB = [gr_XGB]
+            self.data_name = [data_name_ph]
+
             self.is_file = True
+
         elif os.path.isdir(data_dir):  # is it a directory
             print('Input is directory')
+            files = os.listdir(data_dir)
+            files = [file for file in files if os.path.isfile(file)]
+            r, gr, gr_XGB, self.data_name = [], [], [], []
+            for file in files:
+                r_ph, gr_ph, gr_XGB_ph = self.load_data_set(f'{data_dir}/{file}')
+                data_name_ph = self.get_str(file)
+                r.append(r_ph)
+                gr.append(gr_ph)
+                gr_XGB.append(gr_XGB_ph)
+                self.data_name.append(data_name_ph)
             self.is_file = False
-            pass
+
         else:  # this should give an error
             print(data_dir, 'is not valid')
             sys.exit()
@@ -190,6 +202,29 @@ class data_loader():
         self.gr = gr
         self.gr_XGB = gr_XGB
 
+    def __iter__(self):
+        self.index = 0
+        return self
+
+    def __next__(self):
+        try:
+            out_data_name = self.data_name[self.index]
+            out_r = self.r[self.index]
+            out_gr = self.gr[self.index]
+            out_gr_XGB = self.gr_XGB[self.index]
+            self.index += 1
+        except IndexError:
+            raise StopIteration
+        return out_r, out_gr, out_gr_XGB, out_data_name
+
+    def get_str(self, data_dir):
+        if '/' in data_dir:
+            data_name = data_dir.rsplit('/', 1)[1]
+        else:
+            data_name = data_dir
+        data_name = data_name.rsplit('.', 1)[0]
+
+        return data_name
 
     def load_data_set(self, file_path):
         for skiprow in range(50):
