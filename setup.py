@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='ciff',
-    version='0.2.0',
+    version='1.0.0',
     author='Emil T. S. Kjaer',
     author_email='etsk@chem.ku.dk',
     url='https://github.com/EmilSkaaning/ciff',
