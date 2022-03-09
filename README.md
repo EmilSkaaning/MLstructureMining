@@ -33,10 +33,9 @@ or
 python setup.py install
 ```
 It will take some time for it to install since some of the models are quite big and there is a lot of reference data.   
-It is also possible to first build a wheel and then install it with pip. The wheel will be in the dist folder.
+Or download wheel from releases and install it with pip.
 ```
-python setup.py bdist_wheel
-pip install <name_of_wheel>.whl
+pip install ciff-<version>-py3-none-any.whl
 ```
 To verify that __ciff__ have been installed properly try calling the help argument.
 ```
@@ -94,6 +93,11 @@ Our code is developed based on the the following publication:
 This project is licensed under the Apache License Version 2.0, January 2004 - see the [LICENSE](LICENSE) file for details.
 
 # Develop
+Instal in developer mode.
 ```
 $ pip install -e .[dev]
+```
+Build wheel from source distribution.
+```
+python setup.py bdist_wheel
 ```
