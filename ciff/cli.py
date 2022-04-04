@@ -183,7 +183,7 @@ class data_loader():
         elif os.path.isdir(data_dir):  # is it a directory
             print('Input is directory')
             files = os.listdir(data_dir)
-            files = [file for file in files if os.path.isfile(file)]
+            files = [file for file in files if os.path.isfile(f'{data_dir}/{file}')]
             r, gr, gr_XGB, self.data_name = [], [], [], []
             for file in files:
                 r_ph, gr_ph, gr_XGB_ph = self.load_data_set(f'{data_dir}/{file}')
