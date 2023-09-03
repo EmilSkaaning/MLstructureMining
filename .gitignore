@@ -30,3 +30,5 @@ MANIFEST.in
 
 ciff/model/small
 ciff/model/large
+*.bin
+Gr/

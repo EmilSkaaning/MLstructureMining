@@ -20,30 +20,17 @@ requiredNamed = parser.add_argument_group('required named arguments')
 requiredNamed.add_argument("-d", "--data", default=None, type=str,
                     help="a directory of PDFs or a file.", required=True)
 
-# model args
-parser.add_argument("-m", "--model", default=0, type=int,
-                    choices=[0, 1, 2],
-                    help="Choose what model to load. 0 large, 1 small and 2 both")
-
-parser.add_argument("-n", "--nthreads", default=1, type=int,
-                    help="Number of threads used by model")
+parser.add_argument("-n", "--n_cpu", default=1, type=int,
+                    help="Number of cpus used by model")
 
 parser.add_argument("-s", "--show", default=5, type=int,
                     help="Number of best predictions printed")
 
-# Pearson args
-parser.add_argument("-p", "--pearson", default=5, type=int,
-                    help="Calculate the Pearson correlation coefficient from pre-calculated PDFs of best suggested models.")
-
-# output args
 parser.add_argument("-o", "--output", default=True, type=bool,
                     help="Save a .csv with results")
 
 parser.add_argument("-f", "--file_name", default='', type=str,
                     help="Name of the output file")
-
-parser.add_argument("-P", "--plot", default=True, type=bool,
-                    help="Plot 5 best prediction")
 
 def main(args=None):
     args = parser.parse_args(args=args)
@@ -51,8 +38,9 @@ def main(args=None):
                 'qmax', 'qdamp', 'delta2']
 
     # load data
-    data_obj = data_loader(args.data, args.model)
+    data_obj = data_loader(args.data)
 
+    sys.exit()  # Todo: from here
     if data_obj.is_file:
         new_dir = ''
     else:

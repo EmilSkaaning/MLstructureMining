@@ -2,43 +2,33 @@ import numpy as np
 import pandas as pd
 import os
 import xgboost as xgb
+from scipy import interpolate
+import warnings
 
 
 class data_loader():
-    def __init__(self, data_dir, which_model):
-        self.model = which_model
+    def __init__(self, data_dir):
         if os.path.isfile(data_dir):  # is it a file
             print('Input is file')
-            r, gr, gr_XGB = self.load_data_set(data_dir)
-            data_name_ph = self.get_str(data_dir)
-            r = [r]
-            gr = [gr]
-            gr_XGB = [gr_XGB]
-            self.data_name = [data_name_ph]
-
-            self.is_file = True
+            r, gr = self.load_data_set(data_dir)
+            r, gr = self.interpolate_pdf(r, gr)
+            self.r, self.gr, self.gr_XGB, self.data_name = [r], [gr], [xgb.DMatrix([gr.T])], [data_dir]
 
         elif os.path.isdir(data_dir):  # is it a directory
             print('Input is directory')
             files = os.listdir(data_dir)
-            files = [file for file in files if os.path.isfile(f'{data_dir}/{file}')]
-            r, gr, gr_XGB, self.data_name = [], [], [], []
+            files = [file for file in files if os.path.isfile(f'{data_dir}/{file}') and file[0] not in ["_", "."]]
+            self.r, self.gr, self.gr_XGB, self.data_name = [], [], [], []
             for file in files:
-                r_ph, gr_ph, gr_XGB_ph = self.load_data_set(f'{data_dir}/{file}')
-                data_name_ph = self.get_str(file)
-                r.append(r_ph)
-                gr.append(gr_ph)
-                gr_XGB.append(gr_XGB_ph)
-                self.data_name.append(data_name_ph)
-            self.is_file = False
+                r, gr = self.load_data_set(f'{data_dir}/{file}')
+                r, gr = self.interpolate_pdf(r, gr)
+                self.r.append(r), self.gr.append(gr), self.gr_XGB.append(xgb.DMatrix([gr.T])), self.data_name.append(file)
+
 
         else:  # this should give an error
             print(data_dir, 'is not valid')
             sys.exit()
 
-        self.r = r
-        self.gr = gr
-        self.gr_XGB = gr_XGB
 
     def __iter__(self):
         self.index = 0
@@ -55,60 +45,66 @@ class data_loader():
             raise StopIteration
         return out_r, out_gr, out_gr_XGB, out_data_name
 
-    def get_str(self, data_dir):
-        if '/' in data_dir:
-            data_name = data_dir.rsplit('/', 1)[1]
-        else:
-            data_name = data_dir
-        data_name = data_name.rsplit('.', 1)[0]
-
-        return data_name
-
     def load_data_set(self, file_path):
-        for skiprow in range(50):
+        _SKIP_HEADER_TRIES = 100
+
+        for skiprows in range(_SKIP_HEADER_TRIES):
             try:
-                data = np.loadtxt(file_path, skiprows=skiprow)
+                data = np.loadtxt(file_path, skiprows=skiprows).T
                 break
             except ValueError:
-                if skiprow == 49:
-                    print(f'Could not load {file_path}')
-                    raise
-                else:
-                    continue
-
-
-        data = data.T
-        if data[0][0] == 0.:
-            data[1][:] -= data[1][0]
-        else:  # do padding
-            pass
-
-        if data[0][-1] >= 30.:
-            pass
-        else:  # do padding
-            print('data need minimum rmax of 30')
-            sys.exit()
-
-        mean_step = np.mean(data[0][1:]-data[0][:-1])
-        if not round(0.1 % mean_step, 3) == 0:
-            print('fix data')
-            sys.exit()
+                pass
         else:
-            step = round(0.1 / mean_step, 3)
-
-        if self.model == 1:
-            # small model
-            gr = np.array([val for i, val in enumerate(data[1]) if i % step == 0 and i <= 1101 and i >= 100])
-            r = [val for i, val in enumerate(data[0]) if i % step == 0 and i <= 1101 and i >= 100]
-        else:
-            # large model
-            gr = np.array([val for i, val in enumerate(data[1]) if i % step == 0 and i <= 3001])
-            r = [val for i, val in enumerate(data[0]) if i % step == 0 and i <= 3001]
-
+            warnings.warn("Failed to load data after trying to skip headers for {} times.".format(_SKIP_HEADER_TRIES))
+            raise Exception("Data loading failed due to incompatible format or too many header lines.")
+        
+        r, gr = data[0], data[1]
+        self.check_array_values(arr=r)
         gr /= np.amax(gr)
 
-        df = pd.DataFrame(gr).transpose()
-        XGB_mat = xgb.DMatrix(df)
+        return r, gr
 
-        return r, gr, XGB_mat
+    def interpolate_pdf(self, x, y):
+        f = interpolate.interp1d(x, y)
+        x_new = np.arange(0, 30.1, 0.1)
+        y_new = f(x_new)
+        return x_new, y_new
 
+    def check_array_values(self, arr: np.ndarray, min_val: int = 0, max_val: int = 30) -> bool:
+        """
+        Check if the minimum value of the array equals `min_val` and its maximum value is at least `max_val`.
+
+        Parameters
+        ----------
+        arr : np.ndarray
+            Input numpy array to be checked.
+        min_val : int, optional
+            The value that the minimum of the array should be. Default is 0.
+        max_val : int, optional
+            The value that the maximum of the array should be at least. Default is 30.
+
+        Returns
+        -------
+        bool
+            True if the conditions are met, False otherwise.
+
+        Warnings
+        --------
+        If the array does not meet the criteria, a warning is issued indicating the expected 
+        criteria based on provided `min_val` and `max_val`.
+
+        Examples
+        --------
+        >>> arr = np.array([0, 5, 10, 15, 20, 25, 30, 35])
+        >>> check_array_values(arr)
+        True
+
+        >>> arr = np.array([5, 10, 15, 20, 25])
+        >>> check_array_values(arr, min_val=5, max_val=50)
+        False
+        """
+
+        if np.min(arr) != min_val or np.max(arr) < max_val:
+            warnings.warn(f"Array does not meet the criteria: Minimum value should be {min_val} and maximum value should be at least {max_val}.")
+            raise Exception(f"Array does not meet the criteria: Minimum value should be {min_val} and maximum value should be at least {max_val}.")
+        return True
