@@ -99,5 +99,5 @@ $ pip install -e .[dev]
 ```
 Build wheel from source distribution.
 ```
-python setup.py bdist_wheel
+python setup.py sdist bdist_wheel
 ```

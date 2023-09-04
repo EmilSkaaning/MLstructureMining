@@ -69,6 +69,7 @@ def show_best(pred: np.ndarray,
         print('{}) File: {}, prob: {:3.1f}%'.format(count, df_stru_catalog.iloc[idx]["Label"], pred[idx]*100))
         if not pd.isna(df_stru_catalog.at[idx, "Similar"]):
             similar_files = extract_filenames(df_stru_catalog.at[idx, "Similar"])
+            
             print("    Similar structure COD-IDs:", *similar_files)
 
 def extract_filenames(file_string: str) -> List[str]:
