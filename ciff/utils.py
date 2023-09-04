@@ -1,127 +1,90 @@
-import xgboost as xgb
-import time, pkg_resources, h5py
+import ast
+import time
+import pkg_resources
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy import stats
+import xgboost as xgb
 import numpy as np
-from tqdm import tqdm
+from typing import Tuple, List
 
 
-def pearson_correlation(r, gr, model_path, best_list, droplist, num_pears, file_name, do_plot):
-    if model_path == 0:
-        data_path = 'model/large/large_data.hdf5'
-    else:
-        data_path = 'model/small/small_data.hdf5'
-    data_file = pkg_resources.resource_stream(__name__, data_path)
-    f = h5py.File(data_file, "r")
-    key_list = list(f.keys())
 
-    best_pear = np.empty(len(best_list[0]))
-    best_pear[:] = np.nan
-    gr_plot, pear_plot, label_plot = [gr], [1], ['Data']
-    pbar = tqdm(total=num_pears)
-    for count, idx in enumerate(best_list[0][::-1]):
-        H = [x.decode() for x in f['columns']]
-        df = pd.DataFrame(f[key_list[idx]], columns=H)
-        df = df.drop(droplist, axis=1)
-        pcc_list = []
-        for row_idx in range(len(df)):
-            pcc, _ = stats.pearsonr(df.iloc[row_idx].to_numpy(), gr)
-            pcc_list.append(pcc)
-        best_pear[count] = np.amax(pcc_list[0])
+def load_model(n_cpu: int) -> Tuple[xgb.Booster, pd.DataFrame]:
+    """
+    Load a pre-trained XGBoost model from the package's resources.
 
-        if do_plot and count < 5:
-            gr_plot.append(df.iloc[np.argmax(pcc_list[0])].to_numpy())
-            pear_plot.append(np.amax(pcc_list[0]))
-            label_plot.append(key_list[idx])
+    Parameters
+    ----------
+    n_cpu : int
+        Number of CPU threads to use for the XGBoost model.
 
-        pbar.update()
-        if count == num_pears -1:
-            break
-    pbar.close()
-    f.close()
-
-    plot_best(r, gr_plot, pear_plot, label_plot, file_name)
-    return best_pear
-
-
-def load_model(model_path, nthreads):
-    if model_path == 0:
-        model_path = f'model/large'
-    else:
-        model_path = f'model/small'
-
+    Returns
+    -------
+    tuple
+        - xgb.Booster: The loaded XGBoost model.
+        - pd.DataFrame: The structure catalog associated with the model.
+    """
+    model_path = 'model'
     start_time = time.time()
     load_files = pkg_resources.resource_listdir(__name__, model_path)
 
-    this_model = [file for file in load_files if '.bin' in file][0]
-    stru_catalog = [file for file in load_files if 'structure_catalog' in file][0]
-    answer_sheet = [file for file in load_files if 'answer' in file][0]
+    this_model = next(file for file in load_files if file == 'xgb_model_bayse_optimization_00000.bin')
+    stru_catalog = next(file for file in load_files if 'labels' in file)
 
     stream = pkg_resources.resource_stream(__name__, f'{model_path}/{stru_catalog}')
     df_stru_catalog = pd.read_csv(stream, index_col=0)
 
-    stream = pkg_resources.resource_stream(__name__, f'{model_path}/{answer_sheet}')
-    df_answer = pd.read_csv(stream, index_col=0)
-    answer_list = list(df_answer.index)
     print(f'\nLoading: {this_model}')
 
-    bst = xgb.Booster({'nthread': nthreads})  # init model
-    #stream = pkg_resources.resource_string(__name__, f'{model_path}/{this_model}')
-    #print(stream)
+    bst = xgb.Booster({'nthread': n_cpu})
     model_path = pkg_resources.resource_filename(__name__, f'{model_path}/{this_model}')
-    #print(model_path)
-    #stream = io.TextIOWrapper(model_path)
-    bst.load_model(model_path)#io.BytesIO(model_path))  # load data
+    bst.load_model(model_path)
 
     end_time = time.time()
     print(f'Took {end_time-start_time:.1f} sec to load model')
-    return bst, answer_list, df_stru_catalog
+    return bst, df_stru_catalog
 
+def show_best(pred: np.ndarray, 
+              best_list: np.ndarray, 
+              df_stru_catalog: pd.DataFrame, 
+              num_show: int) -> None:
+    """
+    Display the best predictions based on the model output.
 
-def show_best(pred, best_list, answer_list, df_stru_catalog, num_show):
-    for count, idx in enumerate(best_list[0][::-1]):
-        print('\n{}) File: {}, prob: {:.4f}'.format(count, answer_list[idx], pred[0][idx]))
-        new_list = pretty_read(df_stru_catalog.iloc[idx]["Similar"])
-        if len(new_list) > 1:
-            print(f'Additional files in structure catalog: {*new_list[1:],}')
+    Parameters
+    ----------
+    pred : np.ndarray
+        Predictions from the model.
+    best_list : np.ndarray
+        List of best predictions.
+    df_stru_catalog : pd.DataFrame
+        The structure catalog associated with the model.
+    num_show : int
+        Number of top predictions to show.
 
-        if count == num_show:
-            break
-    return None
+    Returns
+    -------
+    None
+    """
+    for count, idx in enumerate(reversed(best_list[-num_show:])):
+        print('{}) File: {}, prob: {:3.1f}%'.format(count, df_stru_catalog.iloc[idx]["Label"], pred[idx]*100))
+        if not pd.isna(df_stru_catalog.at[idx, "Similar"]):
+            similar_files = extract_filenames(df_stru_catalog.at[idx, "Similar"])
+            print("    Similar structure COD-IDs:", *similar_files)
 
+def extract_filenames(file_string: str) -> List[str]:
+    """
+    Extract filenames from a string representation of a list without the .csv extension.
 
-def pretty_read(this_str):
-    this_str = this_str.replace("['", '')
-    this_str = this_str.replace("']", '')
-    this_str = this_str.split("', '")
+    Parameters
+    ----------
+    file_string : str
+        String representation of a list of filenames with .csv extension.
 
-    return this_str
+    Returns
+    -------
+    list[str]
+        List of filenames without the .csv extension.
+    """
+    file_list = ast.literal_eval(file_string)
 
-
-def plot_best(r, grs, pears, labels, file_name):
-    FIGSIZE = (14, 16)
-    LABEL_FONTSIZE = 30
-    LEGEND_SIZE = 20
-    TICK_LABEL = 20
-    TICK_LENGTH = 7
-    TICK_WIDTH = 2
-    LINEWIDTH = 5
-
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    for idx, (gr, pear, pdf_label) in enumerate(zip(grs, pears, labels)):
-        plt.plot(r, gr-idx, label=f'{pdf_label} - {pear:.2f}', linewidth=LINEWIDTH)
-
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=LEGEND_SIZE)
-    plt.ylabel('G(r) / a.u.', fontsize=LABEL_FONTSIZE)
-    plt.xlabel(u'r / Å', fontsize=LABEL_FONTSIZE)
-    plt.tick_params(
-        axis='y',  # changes apply to the x-axis
-        which='both',  # both major and minor ticks are affected
-        left=False,
-        labelleft=False)  # ticks along the bottom edge are off
-    ax.tick_params(length=TICK_LENGTH, width=TICK_WIDTH, labelsize=TICK_LABEL)
-    plt.xlim(r[0], r[-1])
-    plt.tight_layout()
-    plt.savefig(f'{file_name}_plot.png', dpi=300)
-    return None
+    return [filename[:-4] for filename in file_list]
