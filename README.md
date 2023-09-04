@@ -49,7 +49,7 @@ greater detail at the end of this section.
 | `-s` or `--show` | Number of best predictions printed. __int__ | `-s 5` 
 | `-f` or `--file_name` | Name of the output file. __str__ | `-o ''` 
 |  | __Required argument__ | | 
-| `-d` or `--data` | A directory of PDFs or a specific PDF file. __str__ | `-d 5` 
+| `-d` or `--data` | A directory of PDFs or a specific PDF file. __str__ | `` 
 
 # Authors
 __Emil T. S. Kjær__<sup>1</sup>  
