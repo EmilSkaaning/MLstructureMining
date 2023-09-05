@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='mlstructuremining',
-    version='04.00.04',
+    version='04.01.00',
     author='Emil T. S. Kjaer',
     author_email='etsk@chem.ku.dk',
     url='https://github.com/EmilSkaaning/MLstructureMining',

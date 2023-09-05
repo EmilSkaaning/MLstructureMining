@@ -72,7 +72,7 @@ def main(args: Optional[List[str]] = None) -> None:
     # Make predictions
     bst, df_stru_catalog = load_model(parsed_args.n_cpu)
     for r, gr, gr_XGB, stem_name in data_obj:
-        print(f'\n{stem_name}')
+        print(f'\n# ----- # {stem_name} # ----- #')
         pred = bst.predict(gr_XGB)
         best_list = np.argsort(pred)
         show_best(pred[0], best_list[0], df_stru_catalog, parsed_args.show)

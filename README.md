@@ -1,8 +1,8 @@
 # MLstructureMining
 Welcome to MLstructureMining!
 This is a simple machine learning tool for structure characterization of metal-oxides using total scattering Pair 
-Distribution Function (PDF) analysis.  
-Simply provide a PDF and the model will output best best structural models from its structure catalog which contain approximately 11.000 crystal structures. 
+Distribution Function (PDF) analysis. Simply provide a PDF and the model will output best best structural models from its structure catalog which contain approximately 10.833 crystal structures. 
+
 
 1. [Install](#install)
 2. [Usage](#usage)
@@ -81,5 +81,5 @@ $ pip install -e .[dev]
 ```
 Build wheel from source distribution.
 ```
-python setup.py sdist bdist_wheel
+python setup.py bdist_wheel
 ```
