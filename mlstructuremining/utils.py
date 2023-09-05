@@ -66,11 +66,49 @@ def show_best(pred: np.ndarray,
     None
     """
     for count, idx in enumerate(reversed(best_list[-num_show:])):
-        print('{}) File: {}, prob: {:3.1f}%'.format(count, df_stru_catalog.iloc[idx]["Label"], pred[idx]*100))
+        print(f"\n{count}) Probability: {pred[idx]*100:3.1f}%")
+
+        compo = clean_string(df_stru_catalog.iloc[idx]["composition"])
+        sgs = clean_string(df_stru_catalog.iloc[idx]["space_group_symmetry"])
+
+        print(f'    COD-IDs: {df_stru_catalog.iloc[idx]["Label"].rsplit(".",1)[0]}, composition: {compo[0]}, space group: {sgs[0]}')
         if not pd.isna(df_stru_catalog.at[idx, "Similar"]):
             similar_files = extract_filenames(df_stru_catalog.at[idx, "Similar"])
-            
-            print("    Similar structure COD-IDs:", *similar_files)
+            compo = clean_string(df_stru_catalog.iloc[idx]["composition"])
+            sgs = clean_string(df_stru_catalog.iloc[idx]["space_group_symmetry"])
+            for jdx in range(len(similar_files)):
+                print(f'    COD-IDs: {similar_files[jdx]}, composition: {compo[jdx]}, space group: {sgs[jdx]}')
+
+
+def clean_string(string: str) -> list:
+    """
+    Clean and split a string that resembles a list format.
+
+    The function processes a string that appears to be a representation of a list 
+    (e.g., "['a', 'b', 'c']"). It removes the external square brackets and splits 
+    the string based on the sequence "', '". The result is a list of strings.
+
+    Parameters
+    ----------
+    string : str
+        The input string to be cleaned and split.
+
+    Returns
+    -------
+    list
+        A list of strings extracted from the input string.
+
+    Examples
+    --------
+    >>> clean_string("['apple', 'banana', 'cherry']")
+    ['apple', 'banana', 'cherry']
+    """
+    
+    string = string.replace("['", "")
+    string = string.replace("']", "")
+    string = string.split("', '")
+    return string
+
 
 def extract_filenames(file_string: str) -> List[str]:
     """
