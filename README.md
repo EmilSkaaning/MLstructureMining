@@ -47,7 +47,7 @@ greater detail at the end of this section.
 | `-h` or `--help` | Prints help message. |    
 | `-n` or `--n_cpu_` | Number of cpus used by model. __int__ | `-n 1` 
 | `-s` or `--show` | Number of best predictions printed. __int__ | `-s 5` 
-| `-f` or `--file_name` | Name of the output file. __str__ | `-o ''` 
+| `-f` or `--file_name` | Name of the output file. __str__ | `-f ''` 
 |  | __Required argument__ | | 
 | `-d` or `--data` | A directory of PDFs or a specific PDF file. __str__ | `None` 
 
